@@ -1,0 +1,28 @@
+Package: Lab5
+Type: Package
+Title: Web API Package Scaffold
+Version: 0.0.0.9000
+Author: Felix Unterleiter [aut, cre], Nils Fahrni [aut]
+Maintainer: Felix Unterleiter <felun463@student.liu.se>
+Authors@R:
+    c(
+      person(given = "Felix", family = "Unterleiter", role = c("aut", "cre"),
+             email = "felun463@student.liu.se"),
+      person(given = "Nils", family = "Fahrni", role = "aut",
+             email = "nilfa685@student.liu.se")
+    )
+Description: Skeleton for the Lab 5 assignment in Advanced R Programming. The
+    package defines helper functions, tests, and documentation scaffolding to
+    build a client for a chosen web API.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: false
+Depends: R (>= 4.2.0)
+Suggests:
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown
+URL: https://github.com/felixunterleiter/Lab5
+BugReports: https://github.com/felixunterleiter/Lab5/issues
+VignetteBuilder: knitr
+Config/testthat/edition: 3

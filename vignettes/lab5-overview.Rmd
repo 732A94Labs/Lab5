@@ -1,0 +1,38 @@
+---
+title: "Working with the Lab5 API Package"
+author: "Felix Unterleiter and Nils Fahrni"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Working with the Lab5 API Package}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Overview
+
+This vignette describes the scaffold of the Lab5 package. Fill in the missing
+pieces with real API calls, tests, and documentation as you progress through the
+lab assignment.
+
+## Configuring the API base URL
+
+```{r eval = FALSE}
+library(Lab5)
+set_api_base_url("https://api.example.com")
+```
+
+## Implementing API calls
+
+```{r eval = FALSE}
+fetch_api_resource("status")
+```
+
+The exported `fetch_api_resource()` function currently throws an informative
+error. Replace its body with the logic required for the API you decide to use.
