@@ -1,16 +1,13 @@
 # app.R
 library(shiny)
-library(sf)          # for plotting sf objects
-# library(ggplot2)   # optional if you prefer ggplot, not needed for base plot()
+library(sf)
 library(bslib)
-
-# Assumes you already have:
-# fetch_countries(): data.frame with columns "@id" and "name:en"
-# fetch_country_geom_by_relation(relation_id): returns sf with geometry for that country
+library(shinyjs)
 
 ui <- page_sidebar(
   title = "Country Guessr",
   sidebar = sidebar(
+    useShinyjs(),  # activate shinyjs in the UI
     div(class = "text-sm text-muted",
         "Guess the country from its outline. You have 3 health."
     ),
@@ -18,96 +15,121 @@ ui <- page_sidebar(
     h3(textOutput("health")),
     textInput("guess", label = NULL, placeholder = "Type country name…"),
     actionButton("guess_btn", "Guess!", class = "btn-primary"),
+    actionButton("next_btn", "Next Country"),
     actionButton("reset_btn", "New Game", class = "ms-2"),
     br(), br(),
     textOutput("feedback")
   ),
-  plotOutput("countryPlot", height = 500)
+  plotOutput("countryPlot", height = 500),
+  tags$script(HTML("
+  $(document).on('keyup', function(e) {
+    if (e.key === 'Enter' && $('#guess').is(':focus')) {
+      $('#guess_btn').click();
+    }
+  });
+  "))
 )
 
 server <- function(input, output, session) {
+  # Load once, non-reactive (plain data)
+  countries_df <- fetch_countries()[, c("@id", "name:en")]
 
-  # ---------- Game state ----------
+  # Game state (no countries here!)
   rv <- reactiveValues(
-    countries = NULL,         # full pool
-    current = NULL,           # one-row data.frame for the current country
-    geom = NULL,              # sf geometry of current country
+    current = NULL,
+    geom = NULL,
     score = 0L,
     health = 3L,
     game_over = FALSE
   )
 
-  # Helper to pick a new country and load its geometry
   pick_new_country <- function() {
-    req(rv$countries)
-    choice <- rv$countries[sample.int(nrow(rv$countries), 1), , drop = FALSE]
+    choice <- countries_df[sample.int(nrow(countries_df), 1), , drop = FALSE]
+    rel_id <- choice[["@id"]]
+
     rv$current <- choice
-    # Access column with a colon safely using [[ ]]
-    rel_id <- rv$current[["@id"]]
     rv$geom <- fetch_country_geom_by_relation(rel_id)
+
+    output$feedback <- renderText("")
+    updateTextInput(session, "guess", value = "")
+    shinyjs::enable("guess_btn")
+    shinyjs::enable("guess")
   }
 
-  # Start (or restart) a game
+
   start_game <- function() {
-    rv$countries <- fetch_countries()[, c("@id", "name:en")]
     rv$score <- 0L
     rv$health <- 3L
     rv$game_over <- FALSE
-    output$feedback <- renderText("")
     pick_new_country()
-    updateTextInput(session, "guess", value = "")
   }
 
-  # Initialize game on app load
   start_game()
 
-  # ---------- Outputs ----------
+  # Outputs
   output$score  <- renderText(sprintf("Score: %d", rv$score))
   output$health <- renderText(sprintf("Health: %d", rv$health))
 
   output$countryPlot <- renderPlot({
-    req(rv$geom, !rv$game_over)
+    req(rv$geom)
     plot(st_geometry(rv$geom), axes = FALSE, main = "")
     box(lwd = 1)
   })
 
-  # ---------- Guess handling ----------
-  observeEvent(input$guess_btn, {
-    req(!rv$game_over, rv$current)
-
-    user_guess <- trimws(tolower(input$guess))
-    answer     <- tolower(rv$current[["name:en"]])
-
-    if (identical(user_guess, "") ) {
-      output$feedback <- renderText("Type a guess before clicking Guess!")
-      return(invisible())
-    }
-
-    if (user_guess == answer) {
-      rv$score <- rv$score + 1L
-      output$feedback <- renderText(sprintf("✅ CORRECT! It was %s. +1 point.", rv$current[["name:en"]]))
+  # Next Country
+  observeEvent(input$next_btn, {
+    if (!rv$game_over) {
       pick_new_country()
-      updateTextInput(session, "guess", value = "")
     } else {
-      rv$health <- rv$health - 1L
-      if (rv$health <= 0L) {
-        rv$game_over <- TRUE
-        output$feedback <- renderText(sprintf(
-          "❌ WRONG. It was %s. Game over! Final score: %d.",
-          rv$current[["name:en"]], rv$score
-        ))
-      } else {
-        output$feedback <- renderText(sprintf(
-          "❌ WRONG. It was %s. You lost 1 health. %d health remaining.",
-          rv$current[["name:en"]], rv$health
-        ))
-        pick_new_country()
-        updateTextInput(session, "guess", value = "")
-      }
+      start_game()
     }
   })
 
-  # ---------- Reset ----------
+  # Guess handling
+  observeEvent(input$guess_btn, {
+  req(!rv$game_over, rv$current)
+
+  user_guess <- trimws(tolower(input$guess))
+  answer <- tolower(rv$current[["name:en"]])
+
+  shinyjs::disable("guess_btn")
+  shinyjs::disable("guess")
+
+  if (identical(user_guess, "")) {
+    output$feedback <- renderText("Type a guess before clicking Guess!")
+    shinyjs::enable("guess_btn")
+    shinyjs::enable("guess")
+    return(invisible())
+  }
+
+  is_correct <- identical(user_guess, answer)
+
+  if (is_correct) {
+    rv$score <- rv$score + 1L
+    output$feedback <- renderText(sprintf(
+      "✅ CORRECT! It was %s. Loading next country…",
+      rv$current[["name:en"]]
+    ))
+
+    shinyjs::delay(5000, pick_new_country())
+  } else {
+    rv$health <- rv$health - 1L
+    if (rv$health <= 0L) {
+      rv$game_over <- TRUE
+      output$feedback <- renderText(sprintf(
+        "❌ WRONG! It was %s. You lost 1 health and have 0 left. Game over! Final score: %d.",
+        rv$current[["name:en"]], rv$score
+      ))
+    } else {
+      output$feedback <- renderText(sprintf(
+        "❌ WRONG! It was %s. You lost 1 health. %d health remaining. Loading next country…",
+        rv$current[["name:en"]], rv$health
+      ))
+      shinyjs::delay(5000, pick_new_country())
+    }
+  }
+})
+
   observeEvent(input$reset_btn, start_game)
 }
 

@@ -23,6 +23,7 @@ fetch_countries <- function() {
     req_user_agent("YourAppName/1.0 (contact@example.com)") |>
     req_method("POST") |>
     req_body_raw(charToRaw(q)) |>
+    req_timeout(seconds = 60) |>
     req_perform()
 
   txt <- resp_body_string(resp)
