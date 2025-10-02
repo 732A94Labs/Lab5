@@ -4,3 +4,5 @@
 ^vignettes/.*\.html$
 ^\.git$
 ^\.idea$
+^.*\.Rproj$
+^\.Rproj\.user$

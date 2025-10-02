@@ -1,3 +1,0 @@
-export(fetch_api_resource)
-export(get_api_base_url)
-export(set_api_base_url)

@@ -1,9 +1,63 @@
+---
+title: "test_api"
+output: html_document
+---
+
+```{r}
+library(Lab5)
+
+```
+
+
+```{r}
 library(httr2)
 library(jsonlite)
 library(sf)
 
-#' Fetches a list of all available countries
-#' @export
+country_name <- "Germany"  # change this
+
+req <- request("https://nominatim.openstreetmap.org/search") |>
+  req_user_agent("YourAppName/1.0 (contact@example.com)") |>
+  req_url_query(
+    country = country_name,
+    format  = "json",
+    polygon_geojson = 1,
+    limit   = 1
+  )
+
+resp <- req_perform(req)
+
+stopifnot(resp_status(resp) == 200)
+
+data <- resp_body_json(resp, simplifyVector = TRUE)
+
+str(data$geojson, max.level = 1)
+geom <- list(
+  type = data$geojson$type[1],
+  coordinates = data$geojson$coordinates[[1]]
+)
+
+i <- 1
+feature <- list(
+  type = "Feature",
+  properties = list(
+    name     = data$display_name[i],
+    osm_type = data$osm_type[i],
+    osm_id   = data$osm_id[i]
+  ),
+  geometry = geom
+)
+
+fc <- list(type = "FeatureCollection", features = list(feature))
+
+tmp <- tempfile(fileext = ".geojson")
+writeLines(toJSON(fc, auto_unbox = TRUE), tmp)
+
+country <- st_read(tmp, quiet = TRUE) |> st_make_valid()
+plot(st_geometry(country))
+```
+
+```{r}
 fetch_countries <- function() {
   overpass <- "https://overpass-api.de/api/interpreter"
   q <- '
@@ -24,17 +78,30 @@ fetch_countries <- function() {
     req_method("POST") |>
     req_body_raw(charToRaw(q)) |>
     req_perform()
-
+  
   txt <- resp_body_string(resp)
-
+  
   df <- read.csv(text = txt, stringsAsFactors = FALSE, check.names = FALSE)
-
+  
   return(df)
 }
 
-#' Fetches a countrie's geometry by its id from the country list
-#' @export
+countries <- fetch_countries()
+
+select_random_country <- function(countries) {
+  choice <- countries[sample.int(nrow(countries), 1), , drop = FALSE]
+
+  return(choice)
+}
+
+select_random_country(countries[, c("@id","name:en")])$"name:en"
+
+countries
+```
+
+```{r}
 fetch_country_geom_by_relation <- function(rel_id) {
+  # Nominatim wants a type prefix: R for relation
   req <- request("https://nominatim.openstreetmap.org/lookup") |>
     req_user_agent("YourAppName/1.0 (contact@example.com)") |>
     req_url_query(
@@ -61,3 +128,8 @@ fetch_country_geom_by_relation <- function(rel_id) {
   writeLines(toJSON(fc, auto_unbox = TRUE), tmp)
   st_read(tmp, quiet = TRUE) |> st_make_valid()
 }
+
+country_sf <- fetch_country_geom_by_relation("9407")
+plot(st_geometry(country_sf))
+
+```
