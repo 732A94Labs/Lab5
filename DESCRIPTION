@@ -25,7 +25,10 @@ Suggests:
 Imports:
     httr2,
     jsonlite,
-    sf
+    sf,
+    shiny,
+    bslib,
+    shinyjs
 URL: https://github.com/felixunterleiter/Lab5
 BugReports: https://github.com/felixunterleiter/Lab5/issues
 VignetteBuilder: knitr
