@@ -24,11 +24,12 @@ Suggests:
     rmarkdown
 Imports:
     httr2,
+    httptest2,
     jsonlite,
     sf,
     shiny,
-    bslib,
-    shinyjs
+    shinyjs,
+    bslib
 URL: https://github.com/felixunterleiter/Lab5
 BugReports: https://github.com/felixunterleiter/Lab5/issues
 VignetteBuilder: knitr
