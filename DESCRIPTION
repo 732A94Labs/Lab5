@@ -22,6 +22,10 @@ Suggests:
     testthat (>= 3.0.0),
     knitr,
     rmarkdown
+Imports:
+    httr2,
+    jsonlite,
+    sf
 URL: https://github.com/felixunterleiter/Lab5
 BugReports: https://github.com/felixunterleiter/Lab5/issues
 VignetteBuilder: knitr
