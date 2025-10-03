@@ -23,7 +23,7 @@ ui <- page_sidebar(
     class = "px-3 pt-3",
     tags$div(
       class = "app-title mb-3",
-      tags$h2(class = "mb-0 fw-bold", "🌍 Country Guessr"),
+      tags$h2(class = "mb-0 fw-bold", "Country Guessr"),
       tags$p(class = "text-muted mb-0 small",
              "Guess the country from its outline. You have 3 health.")
     ),
@@ -32,7 +32,7 @@ ui <- page_sidebar(
       tags$div(class = "pill pill-health", textOutput("health"))
     ),
     tags$div(class = "mb-2",
-      textInput("guess", label = NULL, placeholder = "Type country name…")
+      textInput("guess", label = NULL, placeholder = "Type country name...")
     ),
     tags$div(class = "d-grid gap-2",
       actionButton("guess_btn", "Guess!", class = "btn btn-primary btn-lg"),
@@ -181,7 +181,7 @@ server <- function(input, output, session) {
   if (is_correct) {
     rv$score <- rv$score + 1L
     output$feedback <- renderText(sprintf(
-      "✅ CORRECT! It was %s. Loading next country…",
+      "CORRECT! It was %s. Loading next country...",
       rv$current[["name:en"]]
     ))
 
@@ -191,12 +191,12 @@ server <- function(input, output, session) {
     if (rv$health <= 0L) {
       rv$game_over <- TRUE
       output$feedback <- renderText(sprintf(
-        "❌ WRONG! It was %s. You lost 1 health and have 0 left. Game over! Final score: %d.",
+        "WRONG! It was %s. You lost 1 health and have 0 left. Game over! Final score: %d.",
         rv$current[["name:en"]], rv$score
       ))
     } else {
       output$feedback <- renderText(sprintf(
-        "❌ WRONG! It was %s. You lost 1 health. %d health remaining. Loading next country…",
+        "WRONG! It was %s. You lost 1 health. %d health remaining. Loading next country...",
         rv$current[["name:en"]], rv$health
       ))
       shinyjs::delay(5000, pick_new_country())

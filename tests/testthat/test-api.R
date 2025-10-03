@@ -10,8 +10,6 @@ if (is.na(PKG) || !nzchar(PKG)) {
   PKG <- "Lab5"
 }
 
-# ---- fetch_countries -------------------------------------------------------
-
 test_that("fetch_countries parses Overpass CSV into a data.frame", {
   fake_csv <- paste(
     '"::type","::id","type","boundary","land_area","ISO3166-1","name:en","name","::count"',
@@ -54,8 +52,6 @@ test_that("fetch_countries still returns a data.frame on empty body (zero rows)"
   )
 })
 
-# ---- fetch_country_geom_by_relation ----------------------------------------
-
 test_that("fetch_country_geom_by_relation returns a valid sf feature with expected properties", {
   rel_id <- 99999L
 
@@ -97,9 +93,6 @@ test_that("fetch_country_geom_by_relation returns a valid sf feature with expect
 })
 
 test_that("fetch_country_geom_by_relation stops if HTTP status is not 200", {
-  # Don't let httr2 perform a real request or construct a failure condition;
-  # return a dummy response and make resp_status() report 500 so the function's
-  # stopifnot() fails deterministically.
   with_mocked_bindings(
     {
       expect_error(fetch_country_geom_by_relation(123L), "is not TRUE")
@@ -113,8 +106,6 @@ test_that("fetch_country_geom_by_relation stops if HTTP status is not 200", {
 test_that("fetch_country_geom_by_relation errors cleanly if JSON lacks geojson", {
   bad_json <- list(other = "thing")
 
-  # Mock everything in your package namespace, including st_read(),
-  # since st_read is imported into PKG via @importFrom sf st_read.
   with_mocked_bindings(
     {
       expect_error(
