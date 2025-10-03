@@ -6,3 +6,5 @@
 ^\.idea$
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^doc$
+^Meta$

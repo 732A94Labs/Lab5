@@ -1,9 +1,8 @@
 ---
-title: "Working with the Lab5 API Package"
-author: "Felix Unterleiter and Nils Fahrni"
+title: "Working with OSM Country Data via the Lab5 API Client"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Working with the Lab5 API Package}
+  %\VignetteIndexEntry{Working with OSM Country Data via the API Client}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -11,28 +10,108 @@ vignette: >
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  fig.align = "center"
 )
 ```
 
-## Overview
+# Overview
 
-This vignette describes the scaffold of the Lab5 package. Fill in the missing
-pieces with real API calls, tests, and documentation as you progress through the
-lab assignment.
+This vignette introduces the API client functions provided by this package:
 
-## Configuring the API base URL
+- `fetch_countries()` — fetches a list of available countries (OSM `admin_level = 2` relations) from the Overpass API.
+- `fetch_country_geom_by_relation()` — fetches a country's polygon geometry by its OSM relation id via Nominatim.
 
-```{r eval = FALSE}
-library(Lab5)
-set_api_base_url("https://api.example.com")
+Both functions query public OpenStreetMap services (Overpass API and Nominatim).  
+**Important:** Please use responsibly. These are community-maintained services.
+
+> Replace `yourpackagename` below with your actual package name.
+
+# Installation
+
+```{r, eval = FALSE}
+# If this package is in development:
+# install.packages("devtools")
+devtools::install()
 ```
 
-## Implementing API calls
+You will also need: **httr2**, **jsonlite**, and **sf**.
 
-```{r eval = FALSE}
-fetch_api_resource("status")
+# Fetching country metadata
+
+```{r, eval = FALSE}
+library(yourpackagename)
+
+countries <- fetch_countries()
+head(countries)
 ```
 
-The exported `fetch_api_resource()` function currently throws an informative
-error. Replace its body with the logic required for the API you decide to use.
+The returned object is a `data.frame` with columns such as:
+
+- `::id` – OSM relation id  
+- `ISO3166-1` – ISO country code (if present)  
+- `name:en` – English name  
+- `name` – local name  
+
+```{r, eval = FALSE}
+# Example: find Germany by ISO code
+subset(countries, `ISO3166-1` == "DE")
+```
+
+# Fetching country geometry
+
+To plot or analyze a country’s boundary, use its **relation id**.  
+For example, Germany’s relation id is `51477` in OSM (subject to change).
+
+```{r, eval = FALSE}
+germany <- fetch_country_geom_by_relation(51477)
+plot(sf::st_geometry(germany))
+```
+
+The returned object is an `sf` feature collection with a single row and an `osm_id` property.
+
+# Combining metadata and geometry
+
+A typical workflow combines both functions:
+
+```{r, eval = FALSE}
+# 1) Fetch metadata
+countries <- fetch_countries()
+
+# 2) Pick France by ISO code (if available)
+fr_id <- countries[countries$`ISO3166-1` == "FR", "::id"]
+
+# 3) Fetch geometry
+fr_geom <- fetch_country_geom_by_relation(fr_id)
+
+# 4) Visualize
+plot(sf::st_geometry(fr_geom), border = "grey40")
+```
+
+# Good practices
+
+- **User-Agent**: Both functions already set a descriptive `User-Agent`
+  (`YourAppName/1.0 (contact@example.com)`). If you fork or reuse the code,
+  update this string to identify your project and provide a contact.
+- **Rate limits**: Do not spam the APIs. Cache results locally if possible.
+- **Reproducibility**: OSM data evolves over time; results may change. Consider
+  recording retrieval dates and, if necessary, pinning to your own Overpass/Nominatim
+  instance.
+
+# Troubleshooting
+
+- If `sf::st_read()` raises GDAL-related errors, ensure your GDAL/PROJ/GEOS stack
+  is properly installed and up to date.
+- If the Overpass API returns empty results, try again later or reduce query load.
+
+# Session info
+
+```{r}
+sessionInfo()
+```
+
+# References
+
+- Overpass API: <https://overpass-api.de/>  
+- Nominatim usage policy: <https://operations.osmfoundation.org/policies/nominatim/>  
+- OpenStreetMap Wiki: <https://wiki.openstreetmap.org/>
