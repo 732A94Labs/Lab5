@@ -38,7 +38,7 @@ NULL
   "Netherlands","North Macedonia","Macedonia","Norway","Poland","Portugal",
   "Romania","Russia","San Marino","Serbia","Slovakia","Slovenia",
   "Spain","Sweden","Switzerland","Turkey","Ukraine","United Kingdom",
-  "Vatican City","Holy See","Aland Islands","Åland Islands","Guernsey","Jersey",
+  "Vatican City","Holy See","Aland Islands","Aland Islands","Guernsey","Jersey",
   "Isle of Man","Faroe Islands","Gibraltar","Svalbard and Jan Mayen"
 ))
 
