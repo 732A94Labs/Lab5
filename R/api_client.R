@@ -117,7 +117,15 @@ fetch_countries <- function(force_refresh = FALSE) {
   keep_iso <- rep(FALSE, nrow(df))
   if ("ISO3166-1" %in% names(df)) {
     iso_col <- df[["ISO3166-1"]]
-    iso_split <- strsplit(ifelse(is.na(iso_col), "", iso_col), ";", fixed = TRUE)
+    if (!is.character(iso_col)) {
+      iso_col <- as.character(iso_col)
+    }
+    if (length(iso_col) == 0L) {
+      iso_split <- vector("list", length(iso_col))
+    } else {
+      iso_col[is.na(iso_col)] <- ""
+      iso_split <- strsplit(iso_col, ";", fixed = TRUE)
+    }
     keep_iso <- vapply(
       iso_split,
       function(x) any(trimws(x[nzchar(x)]) %in% .europe_iso3166),

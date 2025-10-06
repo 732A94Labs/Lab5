@@ -19,7 +19,7 @@ test_that("fetch_countries parses Overpass CSV into a data.frame", {
 
   with_mocked_bindings(
     {
-      df <- fetch_countries()
+      df <- fetch_countries(force_refresh = TRUE)
 
       expect_s3_class(df, "data.frame")
       expect_equal(nrow(df), 1)
@@ -40,7 +40,7 @@ test_that("fetch_countries still returns a data.frame on empty body (zero rows)"
 
   with_mocked_bindings(
     {
-      df <- fetch_countries()
+      df <- fetch_countries(force_refresh = TRUE)
       expect_s3_class(df, "data.frame")
       expect_equal(nrow(df), 0)
       expect_true(all(c("::type","::id","type","boundary","land_area",
@@ -121,4 +121,3 @@ test_that("fetch_country_geom_by_relation errors cleanly if JSON lacks geojson",
     st_read        = function(...) stop("invalid geojson")
   )
 })
-
