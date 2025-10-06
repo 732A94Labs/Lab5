@@ -4,17 +4,20 @@
 \alias{fetch_countries}
 \title{Fetch the list of available countries from Overpass}
 \usage{
-fetch_countries()
+fetch_countries(force_refresh = FALSE)
+}
+\arguments{
+\item{force_refresh}{Logical. If `TRUE`, bypasses the in-memory cache and
+queries Overpass again. Defaults to `FALSE`.}
 }
 \value{
-A `data.frame` where each row represents a country relation (and possibly
-a `land_area` relation where available). Column types are inferred by
+A `data.frame` where each row represents a European country relation. Column types are inferred by
 `read.csv()` and may vary (e.g., `::id` may be character or integer).
 }
 \description{
 Queries the public Overpass API for OSM relations tagged as
-country-level administrative boundaries (admin\_level = 2) and returns
-a parsed data frame of the CSV response. The output includes columns like
+country-level administrative boundaries (admin\_level = 2) within Europe and
+returns a parsed data frame of the CSV response. The output includes columns like
 `::type`, `::id`, `type`, `boundary`, `land_area`, `ISO3166-1`, `name:en`,
 `name`, and `::count` (depending on availability in OSM).
 }
@@ -23,6 +26,9 @@ This function POSTS an Overpass QL script that requests CSV output.
 The request sets a custom `User-Agent` as recommended by the service
 maintainers. The response body is parsed with `utils::read.csv()` using
 `check.names = FALSE` so that header names like `"::id"` are preserved.
+After parsing, results are filtered to `boundary` relations whose ISO code
+or English name is associated with Europe so the Shiny app stays focused on
+that region.
 
 **Important:** The Overpass API is a community resource. Be mindful of
 query complexity and frequency. If you run many tests or scripts, add

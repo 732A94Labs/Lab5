@@ -4,11 +4,14 @@
 \alias{fetch_country_geom_by_relation}
 \title{Fetch a country's geometry by OSM relation id (via Nominatim)}
 \usage{
-fetch_country_geom_by_relation(rel_id)
+fetch_country_geom_by_relation(rel_id, force_refresh = FALSE)
 }
 \arguments{
 \item{rel_id}{Integer or character. An OSM relation id, **without** the
 `R` prefix (the function prepends it internally for the `osm_ids` query).}
+
+\item{force_refresh}{Logical. If `TRUE`, the cached geometry for `rel_id`
+(if present) is ignored and a fresh request is made.}
 }
 \value{
 An `sf` object with one feature (the requested relation) containing:

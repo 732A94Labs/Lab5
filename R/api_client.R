@@ -17,11 +17,36 @@
 #' @name api_client
 NULL
 
+.api_cache <- new.env(parent = emptyenv())
+.api_cache$countries <- NULL
+.api_cache$geoms <- new.env(parent = emptyenv())
+
+.europe_iso3166 <- c(
+  "AL","AD","AM","AT","AZ","BY","BE","BA","BG","HR","CY","CZ",
+  "DK","EE","FI","FR","GE","DE","GR","HU","IS","IE","IT","KZ",
+  "XK","LV","LI","LT","LU","MT","MD","MC","ME","NL","MK","NO",
+  "PL","PT","RO","RU","SM","RS","SK","SI","ES","SE","CH","TR",
+  "UA","GB","VA","AX","GG","JE","IM","FO","GI","SJ"
+)
+
+.europe_country_names <- tolower(c(
+  "Albania","Andorra","Armenia","Austria","Azerbaijan","Belarus","Belgium",
+  "Bosnia and Herzegovina","Bulgaria","Croatia","Cyprus","Czechia","Czech Republic",
+  "Denmark","Estonia","Finland","France","Georgia","Germany","Greece","Hungary",
+  "Iceland","Ireland","Italy","Kazakhstan","Kosovo","Latvia","Liechtenstein",
+  "Lithuania","Luxembourg","Malta","Moldova","Monaco","Montenegro",
+  "Netherlands","North Macedonia","Macedonia","Norway","Poland","Portugal",
+  "Romania","Russia","San Marino","Serbia","Slovakia","Slovenia",
+  "Spain","Sweden","Switzerland","Turkey","Ukraine","United Kingdom",
+  "Vatican City","Holy See","Aland Islands","Åland Islands","Guernsey","Jersey",
+  "Isle of Man","Faroe Islands","Gibraltar","Svalbard and Jan Mayen"
+))
+
 #' Fetch the list of available countries from Overpass
 #'
 #' Queries the public Overpass API for OSM relations tagged as
-#' country-level administrative boundaries (admin\_level = 2) and returns
-#' a parsed data frame of the CSV response. The output includes columns like
+#' country-level administrative boundaries (admin\_level = 2) within Europe and
+#' returns a parsed data frame of the CSV response. The output includes columns like
 #' `::type`, `::id`, `type`, `boundary`, `land_area`, `ISO3166-1`, `name:en`,
 #' `name`, and `::count` (depending on availability in OSM).
 #'
@@ -30,14 +55,19 @@ NULL
 #' The request sets a custom `User-Agent` as recommended by the service
 #' maintainers. The response body is parsed with `utils::read.csv()` using
 #' `check.names = FALSE` so that header names like `"::id"` are preserved.
+#' After parsing, results are filtered to `boundary` relations whose ISO code
+#' or English name is associated with Europe so the Shiny app stays focused on
+#' that region.
 #'
 #' **Important:** The Overpass API is a community resource. Be mindful of
 #' query complexity and frequency. If you run many tests or scripts, add
 #' caching and/or point to your own Overpass instance.
 #'
+#' @param force_refresh Logical. If `TRUE`, bypasses the in-memory cache and
+#'   queries Overpass again. Defaults to `FALSE`.
+#'
 #' @return
-#' A `data.frame` where each row represents a country relation (and possibly
-#' a `land_area` relation where available). Column types are inferred by
+#' A `data.frame` where each row represents a European country relation. Column types are inferred by
 #' `read.csv()` and may vary (e.g., `::id` may be character or integer).
 #'
 #' @examples
@@ -51,7 +81,12 @@ NULL
 #' @export
 #' @importFrom httr2 request req_user_agent req_method req_body_raw req_timeout req_perform resp_body_string
 #' @importFrom utils read.csv
-fetch_countries <- function() {
+
+fetch_countries <- function(force_refresh = FALSE) {
+  if (!force_refresh && !is.null(.api_cache$countries)) {
+    return(.api_cache$countries)
+  }
+
   overpass <- "https://overpass-api.de/api/interpreter"
   q <- '
   [out:csv(
@@ -60,14 +95,13 @@ fetch_countries <- function() {
   )];
   (
   relation["type"="boundary"]["boundary"="administrative"]["admin_level"="2"];
-  relation["type"="land_area"]["admin_level"="2"];
   );
   out;
   out count;
   '
 
   resp <- request(overpass) |>
-    req_user_agent("YourAppName/1.0 (contact@example.com)") |>
+    req_user_agent("GeoGuessr/1.0 (felun463@student.liu.se)") |>
     req_method("POST") |>
     req_body_raw(charToRaw(q)) |>
     req_timeout(seconds = 60) |>
@@ -76,6 +110,32 @@ fetch_countries <- function() {
   txt <- resp_body_string(resp)
 
   df <- read.csv(text = txt, stringsAsFactors = FALSE, check.names = FALSE)
+  if ("type" %in% names(df)) {
+    df <- df[df$type == "boundary", , drop = FALSE]
+  }
+
+  keep_iso <- rep(FALSE, nrow(df))
+  if ("ISO3166-1" %in% names(df)) {
+    iso_col <- df[["ISO3166-1"]]
+    iso_split <- strsplit(ifelse(is.na(iso_col), "", iso_col), ";", fixed = TRUE)
+    keep_iso <- vapply(
+      iso_split,
+      function(x) any(trimws(x[nzchar(x)]) %in% .europe_iso3166),
+      logical(1)
+    )
+  }
+
+  keep_name <- rep(FALSE, nrow(df))
+  if ("name:en" %in% names(df)) {
+    keep_name <- tolower(df[["name:en"]]) %in% .europe_country_names
+  } else if ("name" %in% names(df)) {
+    keep_name <- tolower(df[["name"]]) %in% .europe_country_names
+  }
+
+  keep <- keep_iso | keep_name
+  df <- df[keep, , drop = FALSE]
+
+  .api_cache$countries <- df
 
   return(df)
 }
@@ -97,6 +157,8 @@ fetch_countries <- function() {
 #'
 #' @param rel_id Integer or character. An OSM relation id, **without** the
 #'   `R` prefix (the function prepends it internally for the `osm_ids` query).
+#' @param force_refresh Logical. If `TRUE`, the cached geometry for `rel_id`
+#'   (if present) is ignored and a fresh request is made.
 #'
 #' @return
 #' An `sf` object with one feature (the requested relation) containing:
@@ -116,9 +178,16 @@ fetch_countries <- function() {
 #' @importFrom httr2 request req_user_agent req_url_query req_perform resp_status resp_body_json
 #' @importFrom jsonlite toJSON
 #' @importFrom sf st_read st_make_valid
-fetch_country_geom_by_relation <- function(rel_id) {
+fetch_country_geom_by_relation <- function(rel_id, force_refresh = FALSE) {
+  cache_key <- as.character(rel_id)
+  geom_cache <- .api_cache$geoms
+
+  if (!force_refresh && exists(cache_key, envir = geom_cache, inherits = FALSE)) {
+    return(geom_cache[[cache_key]])
+  }
+
   req <- request("https://nominatim.openstreetmap.org/lookup") |>
-    req_user_agent("YourAppName/1.0 (contact@example.com)") |>
+    req_user_agent("GeoGuessr/1.0 (felun463@student.liu.se)") |>
     req_url_query(
       osm_ids = paste0("R", rel_id),
       format = "json",
@@ -141,5 +210,9 @@ fetch_country_geom_by_relation <- function(rel_id) {
   fc <- list(type = "FeatureCollection", features = list(feature))
   tmp <- tempfile(fileext = ".geojson")
   writeLines(toJSON(fc, auto_unbox = TRUE), tmp)
-  st_read(tmp, quiet = TRUE) |> st_make_valid()
+  result <- st_read(tmp, quiet = TRUE) |> st_make_valid()
+
+  assign(cache_key, result, envir = geom_cache)
+
+  result
 }
